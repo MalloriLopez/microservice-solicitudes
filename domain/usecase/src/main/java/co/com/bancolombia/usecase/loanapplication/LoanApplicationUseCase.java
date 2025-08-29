@@ -13,8 +13,6 @@ public class LoanApplicationUseCase {
     private final LoanApplicationRepository repository;
 
     public Mono<LoanApplication> submitApplication(LoanApplication application) {
-        application.setStatusId(5L);
-        application.setCreatedAt(LocalDateTime.now());
 
         return repository.save(application);
     }
