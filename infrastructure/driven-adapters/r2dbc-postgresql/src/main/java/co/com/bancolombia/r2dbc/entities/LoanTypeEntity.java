@@ -9,32 +9,31 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
-@Table("application")
+
+@Table("loan_type")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class LoanApplicationEntity {
+public class LoanTypeEntity {
 
     @Id
-    @Column("application_id")
-    private String id;
-
-    @Column("loan_amount")
-    private Double loanAmount;
-
-    @Column("term_months")
-    private int termMonths;
-
-    @Column("email_user")
-    private String email;
-
     @Column("loan_type_id")
-    private Long loanTypeId;
+    private Long id;
 
-    @Column("application_status_id")
-    private Long applicationStatusId;
+    private String name;
+
+    @Column("min_amount")
+    private Double minAmount;
+
+    @Column("max_amount")
+    private int maxAmount;
+
+    @Column("interest_rate")
+    private Double interestRate;
+
+    @Column("automatic_validation")
+    private Boolean automaticValidation;
 
 }
-

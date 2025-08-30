@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @ToString
@@ -19,11 +16,10 @@ import java.time.LocalDateTime;
 @Builder(toBuilder = true)
 public class LoanApplication {
     private String id;
-    private String documentId;
-    private Double amount;
-    private Integer termInMonths;
+    private String email;
+    private Double loanAmount;
+    private Integer termMonths;
     private Long loanTypeId;
-    private Long statusId;
-    private LocalDateTime createdAt;
+    private Long applicationStatusId;
 }
 
