@@ -1,3 +1,43 @@
+//package co.com.bancolombia.api;
+//
+//import co.com.bancolombia.api.dto.request.LoanApplicationRequestDTO;
+//import co.com.bancolombia.api.mapper.LoanApplicationDTOMapper;
+//import co.com.bancolombia.usecase.LoanApplicationUseCase;
+//import io.netty.handler.codec.http.HttpResponseStatus;
+//import lombok.RequiredArgsConstructor;
+//import lombok.extern.slf4j.Slf4j;
+//import org.springframework.http.MediaType;
+//import org.springframework.security.access.prepost.PreAuthorize;
+//import org.springframework.stereotype.Component;
+//import org.springframework.web.reactive.function.server.ServerRequest;
+//import org.springframework.web.reactive.function.server.ServerResponse;
+//import reactor.core.publisher.Mono;
+//
+//@Slf4j
+//@Component
+//@RequiredArgsConstructor
+//public class Handler {
+//
+//    private final RequestValidator requestValidator;
+//    private final LoanApplicationUseCase loanApplicationUseCase;
+//    private final LoanApplicationDTOMapper loanApplicationDTOMapper;
+//
+//    @PreAuthorize("hasRole('CLIENTE')")
+//    public Mono<ServerResponse> submitApplicationUseCase(ServerRequest serverRequest) {
+//
+//        return serverRequest.bodyToMono(LoanApplicationRequestDTO.class)
+//                .flatMap(requestValidator::validateLoanApplication)
+//                .map(loanApplicationDTOMapper::toModel)
+//                .flatMap(loanApplicationReq -> {
+//                    log.info("Solicitud recibida: {}", loanApplicationReq.toString());
+//                    return loanApplicationUseCase.submitApplication(loanApplicationReq)
+//                            .doOnSuccess(saved -> log.info("Solicitud guardada: {}", saved.toString()));
+//                })
+//                .flatMap(savedApplication -> ServerResponse.status(HttpResponseStatus.CREATED.code())
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .bodyValue(loanApplicationDTOMapper.toResponse(savedApplication)));
+//    }
+//}
 package co.com.bancolombia.api;
 
 import co.com.bancolombia.api.dto.request.LoanApplicationRequestDTO;
@@ -7,6 +47,10 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -21,18 +65,46 @@ public class Handler {
     private final LoanApplicationUseCase loanApplicationUseCase;
     private final LoanApplicationDTOMapper loanApplicationDTOMapper;
 
+    @PreAuthorize("hasRole('CLIENTE')")
     public Mono<ServerResponse> submitApplicationUseCase(ServerRequest serverRequest) {
 
-        return serverRequest.bodyToMono(LoanApplicationRequestDTO.class)
-                .flatMap(requestValidator::validateLoanApplication)
-                .map(loanApplicationDTOMapper::toModel)
-                .flatMap(loanApplicationReq -> {
-                    log.info("Solicitud recibida: {}", loanApplicationReq.toString());
-                    return loanApplicationUseCase.submitApplication(loanApplicationReq)
-                            .doOnSuccess(saved -> log.info("Solicitud guardada: {}", saved.toString()));
+        Mono<LoanApplicationRequestDTO> dtoMono = serverRequest.bodyToMono(LoanApplicationRequestDTO.class)
+                .flatMap(requestValidator::validateLoanApplication);
+
+        return Mono.zip(dtoMono, currentToken())
+                .flatMap(tuple -> {
+                    var dto  = tuple.getT1();
+                    var auth = tuple.getT2();
+
+                    // Claims del token
+                    String tokenEmail  = auth.getToken().getClaimAsString("email");
+                    String tokenUserId = auth.getToken().getSubject(); // "sub" = id del usuario
+
+                    // Regla HU3: solo puede crear para sí mismo.
+                    // Usa el que tengas en el DTO: email() o clientId(). Ajusta los nombres si difieren.
+                    boolean ok = false;
+                    if (dto.email() != null && !dto.email().isBlank()) {
+                        ok = dto.email().equalsIgnoreCase(tokenEmail);
+                    }
+
+                    if (!ok) {
+                        return Mono.error(new AccessDeniedException("No puedes crear solicitudes para otro usuario"));
+                    }
+
+                    var model = loanApplicationDTOMapper.toModel(dto);
+                    log.info("Solicitud recibida: {}", model);
+                    return loanApplicationUseCase.submitApplication(model)
+                            .doOnSuccess(saved -> log.info("Solicitud guardada: {}", saved));
                 })
-                .flatMap(savedApplication -> ServerResponse.status(HttpResponseStatus.CREATED.code())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(loanApplicationDTOMapper.toResponse(savedApplication)));
+                .flatMap(saved ->
+                        ServerResponse.status(HttpResponseStatus.CREATED.code())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(loanApplicationDTOMapper.toResponse(saved))
+                );
+    }
+
+    private Mono<JwtAuthenticationToken> currentToken() {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> (JwtAuthenticationToken) ctx.getAuthentication());
     }
 }
