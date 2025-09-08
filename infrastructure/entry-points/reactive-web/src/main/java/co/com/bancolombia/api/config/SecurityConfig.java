@@ -51,10 +51,10 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         .pathMatchers(HttpMethod.POST, "/api/v1/solicitudes").hasRole("CLIENTE")
+                        .pathMatchers(HttpMethod.GET, "/api/v1/solicitud").hasRole("ASESOR")
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth
-                        // ⬇️ AQUÍ manejamos 401/403 con cuerpo ProblemDetail
                         .authenticationEntryPoint((exchange, exAuth) -> {
                             String detail = "Se requiere autenticación";
                             if (exAuth instanceof InvalidBearerTokenException) {

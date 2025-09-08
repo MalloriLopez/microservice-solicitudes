@@ -41,7 +41,9 @@
 package co.com.bancolombia.api;
 
 import co.com.bancolombia.api.dto.request.LoanApplicationRequestDTO;
+import co.com.bancolombia.api.dto.response.LoanApplicationListResponse;
 import co.com.bancolombia.api.mapper.LoanApplicationDTOMapper;
+import co.com.bancolombia.usecase.LoanApplicationListUseCase;
 import co.com.bancolombia.usecase.LoanApplicationUseCase;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +66,7 @@ public class Handler {
     private final RequestValidator requestValidator;
     private final LoanApplicationUseCase loanApplicationUseCase;
     private final LoanApplicationDTOMapper loanApplicationDTOMapper;
+    private final LoanApplicationListUseCase loanApplicationListUseCase;
 
     @PreAuthorize("hasRole('CLIENTE')")
     public Mono<ServerResponse> submitApplicationUseCase(ServerRequest serverRequest) {
@@ -78,10 +81,9 @@ public class Handler {
 
                     // Claims del token
                     String tokenEmail  = auth.getToken().getClaimAsString("email");
-                    String tokenUserId = auth.getToken().getSubject(); // "sub" = id del usuario
+                    String tokenUserId = auth.getToken().getSubject();
 
-                    // Regla HU3: solo puede crear para sí mismo.
-                    // Usa el que tengas en el DTO: email() o clientId(). Ajusta los nombres si difieren.
+
                     boolean ok = false;
                     if (dto.email() != null && !dto.email().isBlank()) {
                         ok = dto.email().equalsIgnoreCase(tokenEmail);
@@ -107,4 +109,45 @@ public class Handler {
         return ReactiveSecurityContextHolder.getContext()
                 .map(ctx -> (JwtAuthenticationToken) ctx.getAuthentication());
     }
+
+    @PreAuthorize("hasRole('ASESOR')")
+    public Mono<ServerResponse> listLoanApplicationsUseCase(ServerRequest request) {
+        int page = request.queryParam("page").map(Integer::parseInt).orElse(0);
+        int size = request.queryParam("size").map(Integer::parseInt).orElse(10);
+        Long loanTypeId = request.queryParam("loanTypeId").map(Long::parseLong).orElse(null);
+        Long status     = request.queryParam("status").map(Long::parseLong).orElse(null);
+
+        log.info("GET /api/v1/solicitud page={}, size={}, loanTypeId={}, status={}", page, size, loanTypeId, status);
+
+        return loanApplicationListUseCase
+                .listLoanApplications(page, size, loanTypeId, status)
+                .doOnSubscribe(s -> log.info("Inicio del listado de solicitudes"))
+                .doOnNext(item -> log.debug("Elemento listado: email={}, tipo_prestamo={}, estado={}",
+                        item.email(), item.loanTypeName(), item.statusName()))
+                .doOnError(e -> log.error("Error al listar solicitudes", e))
+                .doFinally(sig -> log.info("Listado de solicitudes finalizado: señal={}", sig))
+                .map(item -> new LoanApplicationListResponse(
+                        item.id(),
+                        item.amount(),
+                        item.termMonths(),
+                        item.email(),
+                        item.name(),
+                        item.loanTypeName(),
+                        item.interestRate(),
+                        item.statusName(),
+                        item.baseSalary(),
+                        item.approvedMonthlyDebtTotal()
+                ))
+                .collectList()
+                .flatMap(list -> {
+                    log.info("Retornando {} items", list.size());
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(list);
+                });
+    }
+
+
+
+
 }

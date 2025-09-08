@@ -7,6 +7,7 @@ import co.com.bancolombia.r2dbc.helper.ReactiveAdapterOperations;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
@@ -29,6 +30,13 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     @Override
     public Mono<LoanApplication> save(LoanApplication a) {
         return super.save(a);
+    }
+
+    @Override
+    public Flux<LoanApplication> filterLoanApplications(int offset, int limit, Long loanTypeId, Long status) {
+        return repository
+                .findForReviewPage(offset, limit, loanTypeId, status)
+                .map(this::toEntity);
     }
 
 

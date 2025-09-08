@@ -17,7 +17,6 @@ public class WebClientConfig {
     public WebClient authClient(@Value("${auth.base-url}") String baseUrl) {
         return WebClient.builder()
                 .baseUrl(baseUrl)
-                // Propaga el Bearer del request entrante a las llamadas salientes
                 .filter((request, next) ->
                         ReactiveSecurityContextHolder.getContext()
                                 .map(ctx -> (JwtAuthenticationToken) ctx.getAuthentication())

@@ -1,7 +1,9 @@
 package co.com.bancolombia.api;
 
 import co.com.bancolombia.api.dto.request.LoanApplicationRequestDTO;
+import co.com.bancolombia.api.dto.response.LoanApplicationListResponse;
 import co.com.bancolombia.api.dto.response.LoanApplicationResponseDTO;
+import co.com.bancolombia.model.loanapplication.LoanApplicationReviewItem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,8 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
-
-import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 @Configuration
@@ -44,9 +44,35 @@ public class RouterRest {
                                     @ApiResponse(responseCode = "400", description = "Petición inválida")
                             }
                     )
+            ),
+            @RouterOperation(
+                    path = "/api/v1/solicitud",
+                    method = RequestMethod.POST,
+                    beanClass = Handler.class,
+                    beanMethod = "listLoanApplicationsUseCase",
+                    operation = @Operation(
+                            operationId = "listLoanApplications",
+                            summary = "Lista las solicitudes de prestamo pendientes por revision",
+                            description = "Lista solicitudes de prestamos y devuelve su representación",
+                            requestBody = @RequestBody(
+                                    required = true,
+                                    content = @Content(schema = @Schema(implementation = LoanApplicationReviewItem.class))
+                            ),
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Solicitudes de prestamos listadas",
+                                            content = @Content(schema = @Schema(implementation = LoanApplicationListResponse.class))
+                                    ),
+                                    @ApiResponse(responseCode = "400", description = "Petición inválida")
+                            }
+                    )
             )
     })
     public RouterFunction<ServerResponse> routerFunction(Handler handler) {
-        return route(POST("/api/v1/solicitudes"), handler::submitApplicationUseCase);
+        return route()
+                .POST("/api/v1/solicitudes", handler::submitApplicationUseCase)
+                .GET("/api/v1/solicitud", handler::listLoanApplicationsUseCase)
+                .build();
     }
 }
