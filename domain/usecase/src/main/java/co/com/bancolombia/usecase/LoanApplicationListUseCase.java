@@ -59,6 +59,26 @@ public class LoanApplicationListUseCase {
             default -> "Unknown";
         };
     }
+    /**
+     * Calcula la cuota fija (anualidad) de un préstamo con interés compuesto mensual.
+     *
+     * Variables del modelo financiero:
+     * - P (principal): monto del préstamo o capital inicial (amount).
+     * - i (tasa mensual): tasa de interés por periodo en forma decimal (p. ej., 0.02 = 2% mensual).
+     * - n (meses): número total de cuotas/periodos de pago.
+     *
+     * Casos especiales:
+     * - Si P <= 0 o n <= 0, la cuota es 0.
+     * - Si i == 0, la cuota es P / n (sin intereses).
+     *
+     * Fórmula utilizada (anualidad vencida):
+     *   A = P * i * (1 + i)^n / ((1 + i)^n - 1)
+     *
+     * @param amount        principal P (capital). Si es null se asume 0.0.
+     * @param monthlyRate   tasa mensual i en decimal (no en %). Si es null se asume 0.0.
+     * @param months        número de cuotas n. Si es null o <= 0 se asume 0.
+     * @return              valor de la cuota fija A para cada mes.
+     */
 
     private static double annuityPayment(Double amount, Double monthlyRate, Integer months) {
         double P = amount == null ? 0.0 : amount;
