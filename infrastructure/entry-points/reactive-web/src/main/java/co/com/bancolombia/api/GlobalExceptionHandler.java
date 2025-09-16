@@ -1,6 +1,8 @@
 package co.com.bancolombia.api;
 
 import co.com.bancolombia.model.exceptions.ExternalServiceCommunicationException;
+import co.com.bancolombia.model.exceptions.NoLoanApplicationsException;
+import co.com.bancolombia.model.exceptions.UnchangedStatusApplicationsException;
 import io.r2dbc.spi.R2dbcException;
 import jakarta.validation.ValidationException;
 import org.slf4j.Logger;
@@ -23,6 +25,21 @@ import java.net.ConnectException;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(UnchangedStatusApplicationsException.class)
+    public Mono<ResponseEntity<ProblemDetail>> handleUnchangedStatus (UnchangedStatusApplicationsException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setTitle("Conflict");
+        problem.setDetail(ex.getMessage());
+        return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).body(problem));
+
+    }@ExceptionHandler(NoLoanApplicationsException.class)
+    public Mono<ResponseEntity<ProblemDetail>> handleNoLoanApplications(NoLoanApplicationsException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setTitle("not found");
+        problem.setDetail(ex.getMessage());
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem));
+    }
 
     @ExceptionHandler(AccessDeniedException.class)
     public Mono<ResponseEntity<ProblemDetail>> handleAccessDenied(AccessDeniedException ex) {

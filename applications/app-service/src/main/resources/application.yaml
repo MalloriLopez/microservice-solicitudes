@@ -1,12 +1,13 @@
 server:
   port: 8081
 spring:
+  #docker
   flyway:
     enabled: true
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-    user: ${DB_USER}
-    password: ${DB_PASSWORD}
-    locations: classpath:db/migration
+    url: "jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
+    user: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    locations: "classpath:db/migration"
     baseline-on-migrate: true
   application:
     name: "solicitudes"
@@ -16,8 +17,6 @@ spring:
     console:
       enabled: true
       path: "/h2"
-#  profiles:
-#    include: null
 management:
   endpoints:
     web:
@@ -30,20 +29,36 @@ management:
   health:
     circuitbreakers:
       enabled: true
+logging:
+  level:
+    root: "INFO"
+    co.com.bancolombia: "DEBUG"
 cors:
   allowed-origins: "http://localhost:4200,http://localhost:8080"
 adapters:
   r2dbc:
-    host: ${DB_HOST}
-    port: ${DB_PORT}
-    database: ${DB_NAME}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
-    schema: ${DB_SCHEMA}
+    #docker
+    host: "${DB_HOST}"
+    port: "${DB_PORT}"
+    database: "${DB_NAME}"
+    username: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    schema: "${DB_SCHEMA}"
+    #local
+#    host: "localhost"
+#    port: 5432
+#    username: "postgres"
+#    password: "postgres"
+#    database: "microservice-solicitudes"
 adapter:
   restconsumer:
     timeout: 300000
-    url: "http://autenticacion-service:8080"
+    url: "http://autenticacion-service:8080" #docker
+    #url: "http://localhost:8080" #local
+  sqs:
+    region: "us-east-2"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/241636745167/loan-notification-email-queue"
+    #endpoint: "http://localhost:4566" # For localstack only
 resilience4j:
   circuitbreaker:
     instances:
@@ -65,11 +80,12 @@ resilience4j:
         slidingWindowSize: 10
         minimumNumberOfCalls: 10
         waitDurationInOpenState: "10s"
-
 security:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: "${JWT_SECRET}" #docker
+    #secret: "VGhpc0lzQVNlY3JldEJhc2U2NEtleVdpdGgzMmJ5dGVzISEhISE" #local
     expiration-seconds: 3600
     issuer: "autenticacion"
 auth:
-  base-url: http://autenticacion-service:8080
+  base-url: "http://autenticacion-service:8080" #docker
+  #base-url: "http://localhost:8080" #local

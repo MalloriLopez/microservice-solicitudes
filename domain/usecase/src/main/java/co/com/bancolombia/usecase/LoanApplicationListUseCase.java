@@ -1,5 +1,6 @@
 package co.com.bancolombia.usecase;
 
+import co.com.bancolombia.model.exceptions.NoLoanApplicationsException;
 import co.com.bancolombia.model.loanapplication.LoanApplicationReviewItem;
 import co.com.bancolombia.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.bancolombia.model.loantype.gateways.LoanTypeRepository;
@@ -46,7 +47,8 @@ public class LoanApplicationListUseCase {
                             approvedMonthlyDebtTotal
                     );
                 })
-        );
+        )
+        .switchIfEmpty(Flux.error(new NoLoanApplicationsException("No hay solicitudes pendientes de aprobacion para mostrar")));
     }
 
     private static String statusToLabel(Long statusId) {
@@ -81,15 +83,15 @@ public class LoanApplicationListUseCase {
      */
 
     private static double annuityPayment(Double amount, Double monthlyRate, Integer months) {
-        double P = amount == null ? 0.0 : amount;
+        double p = amount == null ? 0.0 : amount;
         double i = monthlyRate == null ? 0.0 : monthlyRate;
         int n = (months == null || months <= 0) ? 0 : months;
 
-        if (P <= 0.0 || n <= 0) return 0.0;
-        if (i == 0.0) return P / n;
+        if (p <= 0.0 || n <= 0) return 0.0;
+        if (i == 0.0) return p / n;
 
         double factor = Math.pow(1.0 + i, n);
-        return P * i * factor / (factor - 1.0);
+        return p * i * factor / (factor - 1.0);
     }
 
 }

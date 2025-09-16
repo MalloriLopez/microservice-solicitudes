@@ -86,6 +86,7 @@ public class RouterRest {
         return route()
                 .POST("/api/v1/solicitudes", handler::submitApplicationUseCase)
                 .GET("/api/v1/solicitud", handler::listLoanApplicationsUseCase)
+                .PUT("/api/v1/solicitud/{id}", handler::updateApplicationUseCase)
                 .build();
     }
 }

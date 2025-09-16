@@ -9,6 +9,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 @Table("application")
 @Getter
 @Setter
@@ -19,7 +22,7 @@ public class LoanApplicationEntity {
 
     @Id
     @Column("application_id")
-    private String id;
+    private UUID id;
 
     @Column("loan_amount")
     private Double loanAmount;
@@ -35,6 +38,14 @@ public class LoanApplicationEntity {
 
     @Column("application_status_id")
     private Long applicationStatusId;
+
+    @Column("created_at")
+    private OffsetDateTime createdAt;
+
+    @Column("updated_at")
+    private OffsetDateTime updatedAt;
+
+    private String observations;
 
 }
 

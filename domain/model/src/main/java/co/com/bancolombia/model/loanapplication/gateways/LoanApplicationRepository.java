@@ -4,6 +4,8 @@ import co.com.bancolombia.model.loanapplication.LoanApplication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
+
 public interface LoanApplicationRepository {
     Mono<LoanApplication> save(LoanApplication loanApplication);
 
@@ -13,5 +15,7 @@ public interface LoanApplicationRepository {
             Long loanTypeId,
             Long status
     );
+
+    Mono<LoanApplication> findByEmailAndId(String email, UUID id);
 }
 

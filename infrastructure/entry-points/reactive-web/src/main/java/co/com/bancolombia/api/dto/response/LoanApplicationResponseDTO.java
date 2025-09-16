@@ -1,11 +1,14 @@
 package co.com.bancolombia.api.dto.response;
 
+import java.util.UUID;
+
 public record LoanApplicationResponseDTO (
-        String id,
+        UUID id,
         String email,
         Double loanAmount,
         Integer termMonths,
         Long loanTypeId,
-        Long applicationStatusId
+        Long applicationStatusId,
+        String observations
 ){
 }

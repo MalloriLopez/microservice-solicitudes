@@ -1,4 +1,8 @@
 package co.com.bancolombia.model.loanapplication.gateways;
 
-public class LoggerRepository {
+
+public interface LoggerRepository {
+    void info(String message, Object... args);
+    void warn(String message, Object args);
+    void error(String message, Object... args);
 }

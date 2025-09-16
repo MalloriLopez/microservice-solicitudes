@@ -1,6 +1,7 @@
 package co.com.bancolombia.api;
 
 import co.com.bancolombia.api.dto.request.LoanApplicationRequestDTO;
+import co.com.bancolombia.api.dto.request.UpdateLoanApplicationReqDTO;
 import co.com.bancolombia.api.dto.response.LoanApplicationListResponse;
 import co.com.bancolombia.api.mapper.LoanApplicationDTOMapper;
 import co.com.bancolombia.usecase.LoanApplicationListUseCase;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -83,8 +86,6 @@ public class Handler {
                 .doOnSubscribe(s -> log.info("Inicio del listado de solicitudes"))
                 .doOnNext(item -> log.debug("Elemento listado: email={}, tipo_prestamo={}, estado={}",
                         item.email(), item.loanTypeName(), item.statusName()))
-                .doOnError(e -> log.error("Error al listar solicitudes", e))
-                .doFinally(sig -> log.info("Listado de solicitudes finalizado: señal={}", sig))
                 .map(item -> new LoanApplicationListResponse(
                         item.id(),
                         item.amount(),
@@ -103,6 +104,28 @@ public class Handler {
                     return ServerResponse.ok()
                             .contentType(MediaType.APPLICATION_JSON)
                             .bodyValue(list);
-                });
+                })
+                .doFinally(sig -> log.info("Listado de solicitudes finalizado: señal={}", sig));
     }
+
+
+    public Mono<ServerResponse> updateApplicationUseCase(ServerRequest request) {
+        UUID id = UUID.fromString(request.pathVariable("id"));
+        return request.bodyToMono(UpdateLoanApplicationReqDTO.class)
+                .flatMap(requestValidator::validateLoanApplication)
+
+                .map(dto -> {
+                    var model = loanApplicationDTOMapper.toModel(dto);
+                    model.setId(id);
+                    return model;
+                })
+                .flatMap(loanApplicationUseCase::update)
+                .doOnSuccess(updateLoanApp -> log.info("Solicitud actualizada: {}", updateLoanApp))
+                .flatMap(updateLoanApp -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(loanApplicationDTOMapper.toResponse(updateLoanApp)));
+    }
+
+
+
 }

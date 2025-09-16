@@ -1,7 +1,9 @@
 package co.com.bancolombia.model.loanapplication;
 
+import java.util.UUID;
+
 public record LoanApplicationReviewItem(
-        String id,
+        UUID id,
         Double amount,
         Integer termMonths,
         String email,

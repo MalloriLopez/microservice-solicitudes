@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
+
 @Repository
 public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     LoanApplication/* change for domain model */,
@@ -36,6 +38,12 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     public Flux<LoanApplication> filterLoanApplications(int offset, int limit, Long loanTypeId, Long status) {
         return repository
                 .findForReviewPage(offset, limit, loanTypeId, status)
+                .map(this::toEntity);
+    }
+
+    @Override
+    public Mono<LoanApplication> findByEmailAndId(String email, UUID id) {
+        return repository.findByEmailAndId(email, id)
                 .map(this::toEntity);
     }
 
