@@ -1,6 +1,7 @@
 package co.com.bancolombia.api;
 
 import co.com.bancolombia.api.dto.request.LoanApplicationRequestDTO;
+import co.com.bancolombia.api.dto.request.UpdateLoanApplicationReqDTO;
 import co.com.bancolombia.api.dto.response.LoanApplicationListResponse;
 import co.com.bancolombia.api.dto.response.LoanApplicationResponseDTO;
 import co.com.bancolombia.model.loanapplication.LoanApplicationReviewItem;
@@ -78,6 +79,35 @@ public class RouterRest {
                                             content = @Content(schema = @Schema(implementation = LoanApplicationListResponse.class))
                                     ),
                                     @ApiResponse(responseCode = "400", description = "Invalid parameters")
+                            }
+                    )
+            ),
+            @RouterOperation(
+                    path = "/api/v1/solicitud/{id}",
+                    method = RequestMethod.PUT,
+                    beanClass = Handler.class,
+                    beanMethod = "updateApplicationUseCase",
+                    operation = @Operation(
+                            operationId = "updateLoanApplication",
+                            summary = "Actualiza una solicitud por ID",
+                            description = "Actualiza estado y observaciones de la solicitud",
+                            security = { @SecurityRequirement(name = "bearerAuth") },
+                            parameters = {
+                                    @Parameter(name = "id", description = "ID de la solicitud (UUID)", required = true,
+                                            example = "c0bfc109-4f65-4618-8480-077a3aabf82d")
+                            },
+                            requestBody = @RequestBody(
+                                    required = true,
+                                    content = @Content(schema = @Schema(implementation = UpdateLoanApplicationReqDTO.class))
+                            ),
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Solicitud actualizada",
+                                            content = @Content(schema = @Schema(implementation = LoanApplicationResponseDTO.class))
+                                    ),
+                                    @ApiResponse(responseCode = "400", description = "Petición inválida"),
+                                    @ApiResponse(responseCode = "404", description = "Solicitud no encontrada")
                             }
                     )
             )

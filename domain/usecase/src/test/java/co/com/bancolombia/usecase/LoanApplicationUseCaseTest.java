@@ -1,16 +1,22 @@
 package co.com.bancolombia.usecase;
 
+import co.com.bancolombia.model.exceptions.UnchangedStatusApplicationsException;
 import co.com.bancolombia.model.loanapplication.LoanApplication;
 import co.com.bancolombia.model.loanapplication.gateways.IRestConsumerUserClient;
 import co.com.bancolombia.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.bancolombia.model.loanapplication.gateways.LoggerRepository;
 import co.com.bancolombia.model.loantype.LoanType;
 import co.com.bancolombia.model.loantype.gateways.LoanTypeRepository;
+import co.com.bancolombia.model.notifications.gateways.LoanNotificationRepository;
+import co.com.bancolombia.model.userquery.gateways.IUserQueryClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+
+import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 
@@ -23,13 +29,20 @@ class LoanApplicationUseCaseTest {
     private LoanTypeRepository loanTypeRepository;
     @Mock
     private IRestConsumerUserClient userClient;
+    @Mock
+    private LoggerRepository logger;
+    @Mock
+    private LoanNotificationRepository notificationRepository;
+    @Mock
+    private IUserQueryClient iUserQueryClient;
 
     private LoanApplicationUseCase useCase;
+
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        useCase = new LoanApplicationUseCase(loanRepository, loanTypeRepository, userClient);
+        useCase = new LoanApplicationUseCase(loanRepository, loanTypeRepository, userClient, logger, notificationRepository, iUserQueryClient );
     }
 
     @Test
@@ -102,5 +115,81 @@ class LoanApplicationUseCaseTest {
         verify(loanTypeRepository).findById(99L);
         verifyNoInteractions(loanRepository);
     }
+
+    @Test
+    void update_WhenStatusChangesToApproved_ShouldSendNotificationAndUpdate() {
+   
+        UUID loanId = UUID.randomUUID();
+        String email = "user@example.com";
+        Long previousStatus = 1L;
+        Long newStatus = 4L; // Approved
+
+        LoanApplication existing = LoanApplication.builder()
+                .id(loanId)
+                .email(email)
+                .applicationStatusId(previousStatus)
+                .build();
+
+        LoanApplication updateRequest = LoanApplication.builder()
+                .id(loanId)
+                .email(email)
+                .applicationStatusId(newStatus)
+                .observations("All checks passed")
+                .build();
+
+        IUserQueryClient.UserSummary userDetails = new IUserQueryClient.UserSummary("Carlos", Double.valueOf(5000));
+
+        when(loanRepository.findByEmailAndId(email, loanId)).thenReturn(Mono.just(existing));
+        when(iUserQueryClient.getUserByEmail(email)).thenReturn(Mono.just(userDetails));
+        when(loanRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+        when(notificationRepository.sendMessageUpdateLoan(any())).thenReturn(Mono.just("message-id-123"));
+
+
+        Mono<LoanApplication> result = useCase.update(updateRequest);
+
+
+        StepVerifier.create(result)
+                .expectNextMatches(updated -> updated.getApplicationStatusId().equals(newStatus)
+                        && "All checks passed".equals(updated.getObservations()))
+                .verifyComplete();
+
+        verify(notificationRepository).sendMessageUpdateLoan(any());
+        verify(logger).info(startsWith("SQS enviado"), any(), eq(loanId));
+    }
+
+    @Test
+    void update_WhenStatusDoesNotChange_ShouldThrowUnchangedStatusException() {
+
+        UUID loanId = UUID.randomUUID();
+        String email = "user@example.com";
+        Long status = 1L;
+
+        LoanApplication existing = LoanApplication.builder()
+                .id(loanId)
+                .email(email)
+                .applicationStatusId(status)
+                .build();
+
+        LoanApplication updateRequest = LoanApplication.builder()
+                .id(loanId)
+                .email(email)
+                .applicationStatusId(status)
+                .build();
+
+        when(loanRepository.findByEmailAndId(email, loanId)).thenReturn(Mono.just(existing));
+        when(iUserQueryClient.getUserByEmail(email)).thenReturn(Mono.just(new IUserQueryClient.UserSummary("User", Double.valueOf(5000))));
+
+
+        Mono<LoanApplication> result = useCase.update(updateRequest);
+
+
+        StepVerifier.create(result)
+                .expectErrorMatches(e -> e instanceof UnchangedStatusApplicationsException &&
+                        e.getMessage().contains("ya se encuentra en estado"))
+                .verify();
+
+        verifyNoInteractions(notificationRepository);
+    }
+
 }
 

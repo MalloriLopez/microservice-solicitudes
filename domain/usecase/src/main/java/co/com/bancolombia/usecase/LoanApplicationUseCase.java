@@ -1,6 +1,5 @@
 package co.com.bancolombia.usecase;
 
-import co.com.bancolombia.model.client.UserClientDetails;
 import co.com.bancolombia.model.exceptions.UnchangedStatusApplicationsException;
 import co.com.bancolombia.model.loanapplication.LoanApplication;
 import co.com.bancolombia.model.loanapplication.gateways.IRestConsumerUserClient;
@@ -25,6 +24,7 @@ public class LoanApplicationUseCase {
     private final IRestConsumerUserClient iRestConsumerUserClient;
     private final LoggerRepository logger;
     private final LoanNotificationRepository loanNotificationRepository;
+    private final IUserQueryClient iUserQueryClient;
 
     public Mono<LoanApplication> submitApplication(LoanApplication application) {
         return iRestConsumerUserClient.existsUserByEmail(application.getEmail())
@@ -53,10 +53,10 @@ public class LoanApplicationUseCase {
         final Long newStatusId = loanApplication.getApplicationStatusId();
 
         return loanApplicationRepository.findByEmailAndId(email, id)
-                .zipWhen(ignored -> iRestConsumerUserClient.getUserByEmail(email))
+                .zipWhen(ignored -> iUserQueryClient.getUserByEmail(email))
                 .flatMap(tuple -> {
                     LoanApplication loanBd = tuple.getT1();
-                    UserClientDetails userClientDetails = tuple.getT2();
+                    IUserQueryClient.UserSummary userClientDetails = tuple.getT2();
                     if (loanBd.getApplicationStatusId().equals(newStatusId)) {
                         return Mono.error(new UnchangedStatusApplicationsException("La solicitud de préstamo ya se encuentra en estado " + newStatusId));
                     }
@@ -68,9 +68,7 @@ public class LoanApplicationUseCase {
                     .flatMap(saved -> {
                     String statusName = statusToLabel(saved.getApplicationStatusId());
                     if ("APPROVED".equalsIgnoreCase(statusName) || "REJECTED".equalsIgnoreCase(statusName)) {
-                        String userClient =
-                                (userClientDetails.getName() != null ? userClientDetails.getName() : "")
-                                        + (userClientDetails.getLastname() != null ? " " + userClientDetails.getLastname() : "");
+                        String userClient = userClientDetails.name();
 
                         MessageSQS msg = MessageSQS.builder()
                                 .loanId(saved.getId())

@@ -14,6 +14,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.util.UUID;
+
 import static org.mockito.Mockito.*;
 
 class LoanApplicationListUseCaseTest {
@@ -37,7 +39,7 @@ class LoanApplicationListUseCaseTest {
     void shouldReturnReviewItem_whenApplicationApproved() {
 
         LoanApplication app = LoanApplication.builder()
-                .id("id123")
+                .id(UUID.fromString("id123"))
                 .loanAmount(100000.0)
                 .termMonths(12)
                 .email("test@email.com")
@@ -68,7 +70,7 @@ class LoanApplicationListUseCaseTest {
     void shouldReturnReviewItem_whenStatusUnknown() {
 
         LoanApplication app = LoanApplication.builder()
-                .id("id456")
+                .id(UUID.fromString("id456"))
                 .loanAmount(50000.0)
                 .termMonths(6)
                 .email("other@email.com")
