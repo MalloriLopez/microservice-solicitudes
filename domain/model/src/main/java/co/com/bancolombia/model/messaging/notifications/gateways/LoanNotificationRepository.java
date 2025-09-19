@@ -1,6 +1,6 @@
-package co.com.bancolombia.model.notifications.gateways;
+package co.com.bancolombia.model.messaging.notifications.gateways;
 
-import co.com.bancolombia.model.notifications.MessageSQS;
+import co.com.bancolombia.model.messaging.notifications.MessageSQS;
 import reactor.core.publisher.Mono;
 
 public interface LoanNotificationRepository {

@@ -31,4 +31,5 @@ public interface LoanApplicationReactiveRepository extends ReactiveCrudRepositor
 
     Mono<LoanApplicationEntity> findByEmailAndId(String email, UUID id);
 
+    Flux<LoanApplicationEntity> findByEmailAndApplicationStatusId(String email, Long applicationStatusId);
 }

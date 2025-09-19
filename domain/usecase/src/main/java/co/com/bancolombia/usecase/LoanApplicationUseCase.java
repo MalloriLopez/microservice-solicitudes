@@ -5,9 +5,12 @@ import co.com.bancolombia.model.loanapplication.LoanApplication;
 import co.com.bancolombia.model.loanapplication.gateways.IRestConsumerUserClient;
 import co.com.bancolombia.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.bancolombia.model.loanapplication.gateways.LoggerRepository;
+import co.com.bancolombia.model.loantype.LoanType;
 import co.com.bancolombia.model.loantype.gateways.LoanTypeRepository;
-import co.com.bancolombia.model.notifications.MessageSQS;
-import co.com.bancolombia.model.notifications.gateways.LoanNotificationRepository;
+import co.com.bancolombia.model.messaging.debtcapacity.DebtCapacityEvent;
+import co.com.bancolombia.model.messaging.debtcapacity.gateways.DebtCapacityMessagingRepository;
+import co.com.bancolombia.model.messaging.notifications.MessageSQS;
+import co.com.bancolombia.model.messaging.notifications.gateways.LoanNotificationRepository;
 import co.com.bancolombia.model.userquery.gateways.IUserQueryClient;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -25,6 +28,7 @@ public class LoanApplicationUseCase {
     private final LoggerRepository logger;
     private final LoanNotificationRepository loanNotificationRepository;
     private final IUserQueryClient iUserQueryClient;
+    private final DebtCapacityMessagingRepository debtCapacityMessagingRepository;
 
     public Mono<LoanApplication> submitApplication(LoanApplication application) {
         return iRestConsumerUserClient.existsUserByEmail(application.getEmail())
@@ -33,19 +37,48 @@ public class LoanApplicationUseCase {
                         : Mono.error(new IllegalArgumentException("EL usuario no existe, no es posible realizar la solicitud del préstamo")));
     }
 
-    private Mono<LoanApplication> internalManagement(LoanApplication application){
-                return Mono.just(application)
-               .flatMap(loan -> validateLoanType(application.getLoanTypeId())
-                       .thenReturn(loan))
-                       .doOnNext(loan -> loan.setCreatedAt(OffsetDateTime.now(ZoneId.of("America/Bogota"))))
-                .flatMap(loanApplicationRepository::save);
+    private Mono<LoanApplication> internalManagement(LoanApplication application) {
+        return loanTypeRepository.findById(application.getLoanTypeId())
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("EL tipo de préstamo no existe")))
+                .flatMap(loanType -> {
+                    application.setCreatedAt(OffsetDateTime.now(ZoneId.of("America/Bogota")));
+                    return loanApplicationRepository.save(application)
+                            .flatMap(saved -> onAutomaticValidation(saved, loanType).thenReturn(saved));
+                });
     }
 
-    private Mono<Void> validateLoanType(Long id) {
-        return loanTypeRepository.findById(id)
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("EL tipo de préstamo no existe")))
-                .then();
+    private Mono<Void> onAutomaticValidation(LoanApplication saved, LoanType loanType) {
+        logger.info("Entre al metodo doAutomaticValidation:::" + loanType.getAutomaticValidation());
+        if (loanType.getAutomaticValidation() == null || !loanType.getAutomaticValidation()) {
+            return Mono.empty();
+        }
+        final String email = saved.getEmail();
+        final Long approvedStatus = 4L;
+
+        return loanApplicationRepository.findByEmailAndApplicationStatusId(email, approvedStatus) // Flux<LoanApplication>
+                .collectList()
+                .flatMap(approvedList -> {
+                    return iUserQueryClient.getUserByEmail(email)
+                            .flatMap(user -> {
+                                DebtCapacityEvent event = DebtCapacityEvent.builder()
+                                        .id(saved.getId())
+                                        .email(email)
+                                        .loanAmount(saved.getLoanAmount())
+                                        .termMonths(saved.getTermMonths())
+                                        .loanTypeId(saved.getLoanTypeId())
+                                        .interestRate(loanType.getInterestRate())
+                                        .salaryClient(user.baseSalary())
+                                        .nameClient(user.name() != null ? user.name() : saved.getEmail())
+                                        .approvedApplications(approvedList)
+                                        .build();
+
+                                return debtCapacityMessagingRepository.sendDebtCapacityEvent(event)
+                                        .doOnSuccess(msgId -> logger.info("DebtCapacityEvent enviado SQS messageId={} loanId={}", msgId, saved.getId()))
+                                        .then();
+                            });
+                });
     }
+
 
     public Mono<LoanApplication> update(LoanApplication loanApplication) {
         final String email = loanApplication.getEmail();

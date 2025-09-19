@@ -7,7 +7,7 @@ import co.com.bancolombia.model.loanapplication.gateways.LoanApplicationReposito
 import co.com.bancolombia.model.loanapplication.gateways.LoggerRepository;
 import co.com.bancolombia.model.loantype.LoanType;
 import co.com.bancolombia.model.loantype.gateways.LoanTypeRepository;
-import co.com.bancolombia.model.notifications.gateways.LoanNotificationRepository;
+import co.com.bancolombia.model.messaging.notifications.gateways.LoanNotificationRepository;
 import co.com.bancolombia.model.userquery.gateways.IUserQueryClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

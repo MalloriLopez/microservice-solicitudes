@@ -1,8 +1,7 @@
-package co.com.bancolombia.model.notifications;
+package co.com.bancolombia.model.messaging.notifications;
 
 import lombok.*;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Getter

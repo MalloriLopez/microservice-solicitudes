@@ -47,5 +47,11 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
                 .map(this::toEntity);
     }
 
+    @Override
+    public Flux<LoanApplication> findByEmailAndApplicationStatusId(String email, Long applicationStatusId) {
+        return repository.findByEmailAndApplicationStatusId(email, applicationStatusId)
+                .map(this::toEntity);
+    }
+
 
 }
