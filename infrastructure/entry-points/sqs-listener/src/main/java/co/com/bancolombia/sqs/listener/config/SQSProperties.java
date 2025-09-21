@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SQSProperties(
         String region,
         String endpoint,
-        String debtCapacityReplyQueueUrl,
+        String queueUrl,
         int waitTimeSeconds,
         int visibilityTimeoutSeconds,
         int maxNumberOfMessages,

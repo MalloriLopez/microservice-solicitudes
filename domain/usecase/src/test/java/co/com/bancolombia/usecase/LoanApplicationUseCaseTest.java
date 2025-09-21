@@ -7,6 +7,7 @@ import co.com.bancolombia.model.loanapplication.gateways.LoanApplicationReposito
 import co.com.bancolombia.model.loanapplication.gateways.LoggerRepository;
 import co.com.bancolombia.model.loantype.LoanType;
 import co.com.bancolombia.model.loantype.gateways.LoanTypeRepository;
+import co.com.bancolombia.model.messaging.debtcapacity.gateways.DebtCapacityMessagingRepository;
 import co.com.bancolombia.model.messaging.notifications.gateways.LoanNotificationRepository;
 import co.com.bancolombia.model.userquery.gateways.IUserQueryClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,8 @@ class LoanApplicationUseCaseTest {
     private LoanNotificationRepository notificationRepository;
     @Mock
     private IUserQueryClient iUserQueryClient;
+    @Mock
+    private DebtCapacityMessagingRepository debtCapacityMessagingRepository;
 
     private LoanApplicationUseCase useCase;
 
@@ -42,7 +45,7 @@ class LoanApplicationUseCaseTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        useCase = new LoanApplicationUseCase(loanRepository, loanTypeRepository, userClient, logger, notificationRepository, iUserQueryClient );
+        useCase = new LoanApplicationUseCase(loanRepository, loanTypeRepository, userClient, logger, notificationRepository, iUserQueryClient, debtCapacityMessagingRepository  );
     }
 
     @Test

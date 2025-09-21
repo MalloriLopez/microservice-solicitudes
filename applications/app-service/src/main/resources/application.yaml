@@ -81,8 +81,8 @@ auth:
 entrypoint:
   sqs:
     region: "us-east-2"
-    endpoint: "http://localhost:4566"
-    debtCapacityReplyQueueUrl: "https://sqs.us-east-2.amazonaws.com/241636745167/debt-capacity-reply-queue"
+    #endpoint: "http://localhost:4566"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/241636745167/debt-capacity-reply-queue"
     waitTimeSeconds: 20
     maxNumberOfMessages: 10
     visibilityTimeoutSeconds: 10
