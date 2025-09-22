@@ -42,6 +42,9 @@ public class SQSProcessor implements Function<Message, Mono<Void>> {
                     return loanApplicationUseCase.update(updateReq)
                             .doOnSuccess(saved -> logger.info("[UPDATE OK] id={} status={} email={}",
                                     saved.getId(), saved.getApplicationStatusId(), saved.getEmail()))
+                            .switchIfEmpty(Mono.fromRunnable(() ->
+                                    logger.info("[UPDATE EMPTY] id={} email={} (no rows updated or not found)",
+                                            updateReq.getId(), updateReq.getEmail())))
                             .then();
                 })
                 .doOnError(err -> logger.error("[SQS PROCESS ERROR] messageId={} error={}", message.messageId(), err.getMessage(), err));

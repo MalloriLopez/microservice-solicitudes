@@ -19,7 +19,7 @@ public class MessageSQS {
       private String emailClient;
       private String observations;
       private OffsetDateTime updatedAt;
-      private BigInteger amount;
+      private Double amount;
       private Integer loanTermMonths;
-      private BigDecimal annualInterestRate;
+      private Double annualInterestRate;
 }

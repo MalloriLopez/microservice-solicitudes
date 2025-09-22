@@ -81,12 +81,16 @@ public class LoanApplicationUseCase {
 
 
     public Mono<LoanApplication> update(LoanApplication loanApplication) {
+        logger.info("ENtre al metodo update");
         final String email = loanApplication.getEmail();
         final UUID id = loanApplication.getId();
         final Long newStatusId = loanApplication.getApplicationStatusId();
 
         return loanApplicationRepository.findByEmailAndId(email, id)
-                .zipWhen(ignored -> iUserQueryClient.getUserByEmail(email))
+                .switchIfEmpty(Mono.error(new IllegalStateException("Prestamo no encontrado:  id=" + id + " email=" + email)))
+                .zipWhen(ignored -> iUserQueryClient.getUserByEmail(email)
+                        .doOnSuccess(resp -> logger.info("cliente: " + resp))
+                        .switchIfEmpty(Mono.error(new IllegalStateException("Cliente no encontrado: email=" + email))))
                 .flatMap(tuple -> {
                     LoanApplication loanBd = tuple.getT1();
                     IUserQueryClient.UserSummary userClientDetails = tuple.getT2();
@@ -99,24 +103,44 @@ public class LoanApplicationUseCase {
                     return loanApplicationRepository.save(loanBd)
 
                     .flatMap(saved -> {
-                    String statusName = statusToLabel(saved.getApplicationStatusId());
-                    if ("APPROVED".equalsIgnoreCase(statusName) || "REJECTED".equalsIgnoreCase(statusName)) {
-                        String userClient = userClientDetails.name();
+                        String statusName = statusToLabel(saved.getApplicationStatusId());
+                        if ("APPROVED".equalsIgnoreCase(statusName)) {
+                            String userClient = userClientDetails.name();
+                            return loanTypeRepository.findById(saved.getLoanTypeId())
+                                    .flatMap(loanType -> {
+                                        MessageSQS msg = MessageSQS.builder()
+                                                .loanId(saved.getId())
+                                                .status("APROBADO")
+                                                .emailClient(saved.getEmail())
+                                                .userClient(userClient)
+                                                .updatedAt(saved.getUpdatedAt())
+                                                .amount(saved.getLoanAmount())
+                                                .loanTermMonths(saved.getTermMonths())
+                                                .annualInterestRate(loanType.getInterestRate())
+                                                .build();
+                                        logger.info("ENtre al if" + msg.toBuilder());
+                                        return loanNotificationRepository.sendMessageUpdateLoan(msg)
+                                                .doOnSuccess(msgId -> logger.info("SQS enviado messageId={} solicitudId={}", msgId, saved.getId()))
+                                                .thenReturn(saved);
+                                    });
+                        } else if ("REJECTED".equalsIgnoreCase(statusName)) {
+                            String userClient = userClientDetails.name();
+                            MessageSQS msg = MessageSQS.builder()
 
-                        MessageSQS msg = MessageSQS.builder()
-                                .loanId(saved.getId())
-                                .status(statusName.equalsIgnoreCase("APPROVED") ? "APROBADO" : "RECHAZADO")
-                                .emailClient(saved.getEmail())
-                                .userClient(userClient)
-                                .build();
-                        logger.info("ENtre al if"+ msg.toBuilder());
-                        return loanNotificationRepository.sendMessageUpdateLoan(msg)
-                                .doOnSuccess(msgId -> logger.info("SQS enviado messageId={} solicitudId={}", msgId, saved.getId()))
-                                .thenReturn(saved);
-                    }
-                    return Mono.just(saved);
+                                    .loanId(saved.getId())
+                                    .status("RECHAZADO")
+                                    .emailClient(saved.getEmail())
+                                    .userClient(userClient)
+                                    .updatedAt(saved.getUpdatedAt())
+                                    .build();
+                            logger.info("ENtre al if" + msg.toBuilder());
+                            return loanNotificationRepository.sendMessageUpdateLoan(msg)
+                                    .doOnSuccess(msgId -> logger.info("SQS enviado messageId={} solicitudId={}", msgId, saved.getId()))
+                                    .thenReturn(saved);
+                        }
+                        return Mono.just(saved);
+                    });
                 });
-    });
     }
 
     private static String statusToLabel(Long statusId) {
@@ -130,4 +154,6 @@ public class LoanApplicationUseCase {
         };
     }
 }
+
+
 
