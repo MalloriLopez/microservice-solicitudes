@@ -11,6 +11,7 @@ import co.com.bancolombia.model.messaging.debtcapacity.DebtCapacityEvent;
 import co.com.bancolombia.model.messaging.debtcapacity.gateways.DebtCapacityMessagingRepository;
 import co.com.bancolombia.model.messaging.notifications.MessageSQS;
 import co.com.bancolombia.model.messaging.notifications.gateways.LoanNotificationRepository;
+import co.com.bancolombia.model.messaging.reports.gateways.ReportsRepository;
 import co.com.bancolombia.model.userquery.gateways.IUserQueryClient;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -29,6 +30,7 @@ public class LoanApplicationUseCase {
     private final LoanNotificationRepository loanNotificationRepository;
     private final IUserQueryClient iUserQueryClient;
     private final DebtCapacityMessagingRepository debtCapacityMessagingRepository;
+    private final ReportsRepository reportsRepository;
 
     public Mono<LoanApplication> submitApplication(LoanApplication application) {
         return iRestConsumerUserClient.existsUserByEmail(application.getEmail())
@@ -119,9 +121,12 @@ public class LoanApplicationUseCase {
                                                 .annualInterestRate(loanType.getInterestRate())
                                                 .build();
                                         logger.info("ENtre al if" + msg.toBuilder());
-                                        return loanNotificationRepository.sendMessageUpdateLoan(msg)
-                                                .doOnSuccess(msgId -> logger.info("SQS enviado messageId={} solicitudId={}", msgId, saved.getId()))
-                                                .thenReturn(saved);
+                                        return Mono.zip(
+                                                loanNotificationRepository.sendMessageUpdateLoan(msg)
+                                                        .doOnSuccess(msgId -> logger.info("SQS notification enviado messageId={} solicitudId={}", msgId, saved.getId())),
+                                                reportsRepository.sendMessageReports(saved.getLoanAmount())
+                                                        .doOnSuccess(msgId -> logger.info("SQS Reports enviado messageId={} solicitudId={}", msgId, saved.getId()))
+                                        ).thenReturn(saved);
                                     });
                         } else if ("REJECTED".equalsIgnoreCase(statusName)) {
                             String userClient = userClientDetails.name();

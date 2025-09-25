@@ -7,5 +7,6 @@ public record SQSSenderProperties(
      String region,
      String notificationQueueUrl,
      String endpoint,
-     String debtCapacityQueueUrl){
+     String debtCapacityQueueUrl,
+     String reportsQueueUrl){
 }
